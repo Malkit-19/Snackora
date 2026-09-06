@@ -221,6 +221,67 @@ Thank you for snacking clean with Snackora! 🥜✨`;
   }
 
   /**
+   * Dispatch Order Status Update via WhatsApp (Confirmed, Shipped, Out for Delivery, Delivered, Cancelled)
+   */
+  async sendOrderStatusUpdate({ user, order, newStatus, trackingNumber = '', carrier = '' }) {
+    const phone = user?.phone || order?.shippingAddress?.phone;
+    if (!phone) return { success: false, reason: 'NO_PHONE_NUMBER' };
+    if (user?.whatsappOptIn === false) return { success: false, reason: 'WHATSAPP_OPT_OUT' };
+
+    const orderNumber = order.orderNumber || order._id;
+    const userName = user?.name || order?.shippingAddress?.fullName || 'Valued Customer';
+    const baseUrl = (process.env.FRONTEND_URL || 'https://snackora-7k6f.onrender.com').replace(/\/$/, '');
+
+    let statusEmoji = '📦';
+    let statusTitle = `Order Status: ${newStatus}`;
+    let statusBody = `Your order *#${orderNumber}* status has been updated to *${newStatus}*.`;
+
+    if (newStatus === 'CONFIRMED') {
+      statusEmoji = '✅';
+      statusTitle = 'Order Confirmed & In Kitchen';
+      statusBody = `Your order *#${orderNumber}* has been confirmed and is being prepared with fresh ingredients.`;
+    } else if (newStatus === 'PACKED') {
+      statusEmoji = '🎁';
+      statusTitle = 'Order Packed';
+      statusBody = `Your gourmet snacks for order *#${orderNumber}* are safely packed and ready for dispatch.`;
+    } else if (newStatus === 'SHIPPED') {
+      statusEmoji = '🚚';
+      statusTitle = 'Order Shipped';
+      const carrierInfo = carrier ? ` via *${carrier}*` : '';
+      const trackInfo = trackingNumber ? `\n🔍 *Tracking Number:* \`${trackingNumber}\`` : '';
+      statusBody = `Your order *#${orderNumber}* is on its way${carrierInfo}!${trackInfo}`;
+    } else if (newStatus === 'OUT_FOR_DELIVERY') {
+      statusEmoji = '🛵';
+      statusTitle = 'Out for Delivery';
+      statusBody = `Your delicious Snackora snacks for order *#${orderNumber}* are out for delivery today. Get ready to munch!`;
+    } else if (newStatus === 'DELIVERED') {
+      statusEmoji = '🎉';
+      statusTitle = 'Delivered Successfully';
+      statusBody = `Your order *#${orderNumber}* has been delivered! We hope you love the taste & crunch. Don't forget to rate your experience.`;
+    } else if (newStatus === 'CANCELLED') {
+      statusEmoji = '❌';
+      statusTitle = 'Order Cancelled';
+      statusBody = `Your order *#${orderNumber}* has been cancelled. If any payment was deducted, a refund has been initiated.`;
+    }
+
+    const message = `${statusEmoji} *${statusTitle}!* — *Snackora*
+
+Hi ${userName},
+${statusBody}
+
+👉 Track live order progress:
+${baseUrl}/orders/${order._id}
+
+Need assistance? Reply directly to this WhatsApp or email support@snackora.in
+_Team Snackora Gourmet Pantry_`;
+
+    return this.sendMessage({
+      to: phone,
+      message
+    });
+  }
+
+  /**
    * Dispatch Refund Success Notification via WhatsApp
    */
   async sendRefundSuccessMessage({ to, userName = 'Valued Customer', orderNumber, amount, method = 'UPI', payoutDetails = '', transactionRef = '' }) {

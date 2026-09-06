@@ -7,6 +7,7 @@ const { calculateCheckoutTotals, generateOrderNumber } = require('../services/ch
 const { PAYMENT_METHODS } = require('../config/constants');
 const { createInAppNotification } = require('../controllers/notificationController');
 const { sendOrderConfirmationEmail } = require('../services/emailService');
+const whatsappService = require('../services/whatsappService');
 
 const ALLOWED_PAYMENT_METHODS = [
   PAYMENT_METHODS.COD,
@@ -219,6 +220,9 @@ const placeOrder = async (req, res, next) => {
       user: req.user,
       order
     }).catch((e) => console.warn('[Email Error]', e.message));
+
+    whatsappService.sendOrderConfirmation(req.user, order)
+      .catch((e) => console.warn('[WhatsApp Error]', e.message));
 
     return sendSuccess(res, 'Order placed successfully!', {
       order: {

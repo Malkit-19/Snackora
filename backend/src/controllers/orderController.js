@@ -9,6 +9,9 @@ const User = require('../models/User');
 const { sendSuccess, sendError } = require('../utils/responseHandler');
 const { calculateCheckoutTotals, generateOrderNumber } = require('../services/checkoutService');
 const { PAYMENT_METHODS } = require('../config/constants');
+const { createInAppNotification } = require('../controllers/notificationController');
+const { sendOrderConfirmationEmail, sendOrderShippedEmail, sendOrderDeliveredEmail } = require('../services/emailService');
+const whatsappService = require('../services/whatsappService');
 
 const ALLOWED_PAYMENT_METHODS = ['COD', 'UPI'];
 
@@ -186,6 +189,24 @@ const createOrder = async (req, res, next) => {
       { user: req.user._id },
       { $set: { items: [], coupon: null, lastActivityAt: new Date() } }
     );
+
+    // Dispatch in-app notification, email, and WhatsApp confirmation (non-blocking)
+    createInAppNotification({
+      userId: req.user._id,
+      type: 'ORDER',
+      title: `Order Placed: ${order.orderNumber}`,
+      message: `Your order for ₹${order.pricing.total} has been placed successfully via ${paymentMethod}.`,
+      link: `/orders/${order._id}`,
+      metadata: { orderId: order._id, orderNumber: order.orderNumber }
+    }).catch((e) => console.warn('[Notification Error]', e.message));
+
+    sendOrderConfirmationEmail({
+      user: req.user,
+      order
+    }).catch((e) => console.warn('[Email Error]', e.message));
+
+    whatsappService.sendOrderConfirmation(req.user, order)
+      .catch((e) => console.warn('[WhatsApp Error]', e.message));
 
     return sendSuccess(res, 'Order placed successfully!', { order }, 201);
   } catch (error) {
@@ -423,6 +444,39 @@ const adminUpdateOrderStatus = async (req, res, next) => {
     }
 
     await order.save();
+
+    // Dispatch customer notifications (in-app, email, and WhatsApp)
+    (async () => {
+      try {
+        const orderUser = await User.findById(order.user).select('name email phone whatsappOptIn');
+        if (orderUser) {
+          await createInAppNotification({
+            userId: orderUser._id,
+            type: 'ORDER',
+            title: `Order Update: #${order.orderNumber}`,
+            message: `Your order status has been updated to ${newStatus}.`,
+            link: `/orders/${order._id}`,
+            metadata: { orderId: order._id, orderNumber: order.orderNumber, status: newStatus }
+          });
+
+          if (newStatus === 'SHIPPED') {
+            await sendOrderShippedEmail({ user: orderUser, order });
+          } else if (newStatus === 'DELIVERED') {
+            await sendOrderDeliveredEmail({ user: orderUser, order });
+          }
+
+          await whatsappService.sendOrderStatusUpdate({
+            user: orderUser,
+            order,
+            newStatus,
+            trackingNumber: order.trackingNumber,
+            carrier: order.carrier
+          });
+        }
+      } catch (notifErr) {
+        console.warn('[Status Notification Error]:', notifErr.message);
+      }
+    })();
 
     return sendSuccess(res, `Order status updated to ${newStatus}.`, {
       order: {
