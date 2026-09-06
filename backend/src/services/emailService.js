@@ -8,8 +8,8 @@ let transporter = null;
  */
 const getTransporter = () => {
   if (!transporter) {
-    const user = process.env.SMTP_USER || '';
-    const pass = process.env.SMTP_PASS || '';
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
 
     if (user && pass && !user.includes('REPLACE_WITH')) {
       transporter = nodemailer.createTransport({
@@ -17,10 +17,10 @@ const getTransporter = () => {
         auth: { user, pass }
       });
     } else {
-      // Mock transporter in dev/test when credentials not yet set
+      // Simulation mode when real SMTP credentials are not configured in environment
       transporter = {
         sendMail: async (mailOptions) => {
-          console.log(`[Email Simulation] To: ${mailOptions.to} | Subject: ${mailOptions.subject}`);
+          console.log(`[Email Simulation - Add SMTP_USER & SMTP_PASS in Render to deliver real emails] To: ${mailOptions.to} | Subject: ${mailOptions.subject}`);
           return { messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(7)}`, simulated: true };
         }
       };
