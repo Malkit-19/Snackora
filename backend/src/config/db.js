@@ -46,15 +46,14 @@ const ensureAdminUser = async () => {
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/snackora';
+    const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/snackora';
     const conn = await mongoose.connect(mongoURI, {
       autoIndex: true
     });
     console.log(`[Database] MongoDB Connected: ${conn.connection.host} / ${conn.connection.name}`);
     await ensureAdminUser();
   } catch (error) {
-    console.error(`[Database Error] Failed to connect: ${error.message}`);
-    process.exit(1);
+    console.error(`[Database Error] Failed to connect to MongoDB: ${error.message}`);
   }
 };
 
