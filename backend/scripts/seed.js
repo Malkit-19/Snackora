@@ -7,7 +7,7 @@ const { USER_ROLES, B2B_STATUS } = require('../src/config/constants');
 
 const seedData = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/snackora';
+    const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/snackora';
     console.log(`Connecting to database: ${mongoURI}`);
     await mongoose.connect(mongoURI);
 
