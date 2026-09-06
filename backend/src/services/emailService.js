@@ -19,38 +19,50 @@ const ipv4Lookup = (hostname, options, callback) => {
   });
 };
 
-let transporter = null;
+const createTransporter = (port = 587, secure = false) => {
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
 
-/**
- * Initialize or get cached Nodemailer transporter
- */
-const getTransporter = () => {
-  if (!transporter) {
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
-
-    if (user && pass && !user.includes('REPLACE_WITH')) {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT, 10) || 465,
-        secure: true,
-        lookup: ipv4Lookup,
-        auth: { user, pass },
-        connectionTimeout: 10000,
-        greetingTimeout: 8000,
-        socketTimeout: 15000
-      });
-    } else {
-      // Simulation mode when real SMTP credentials are not configured in environment
-      transporter = {
-        sendMail: async (mailOptions) => {
-          console.log(`[Email Simulation - Add SMTP_USER & SMTP_PASS in Render to deliver real emails] To: ${mailOptions.to} | Subject: ${mailOptions.subject}`);
-          return { messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(7)}`, simulated: true };
-        }
-      };
-    }
+  if (user && pass && !user.includes('REPLACE_WITH')) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port,
+      secure,
+      lookup: ipv4Lookup,
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000
+    });
   }
-  return transporter;
+
+  // Simulation mode when real SMTP credentials are not configured in environment
+  return {
+    sendMail: async (mailOptions) => {
+      console.log(`[Email Simulation - Add SMTP_USER & SMTP_PASS in Render to deliver real emails] To: ${mailOptions.to} | Subject: ${mailOptions.subject}`);
+      return { messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(7)}`, simulated: true };
+    }
+  };
+};
+
+let primaryTransporter = null;
+let fallbackTransporter = null;
+
+const getTransporter = () => {
+  if (!primaryTransporter) {
+    primaryTransporter = createTransporter(587, false);
+  }
+  return primaryTransporter;
+};
+
+const getFallbackTransporter = () => {
+  if (!fallbackTransporter) {
+    fallbackTransporter = createTransporter(465, true);
+  }
+  return fallbackTransporter;
 };
 
 /**
@@ -80,14 +92,27 @@ const sendEmail = async ({
                                  .replace(/\s+/g, ' ')
                                  .trim();
 
-    const mailClient = getTransporter();
-    const info = await mailClient.sendMail({
-      from: fromEmail,
-      to: safeRecipient,
-      subject,
-      text: plainText,
-      html
-    });
+    let info;
+    try {
+      const mailClient = getTransporter();
+      info = await mailClient.sendMail({
+        from: fromEmail,
+        to: safeRecipient,
+        subject,
+        text: plainText,
+        html
+      });
+    } catch (primaryErr) {
+      console.warn(`[Email Primary 587 Failed: ${primaryErr.message}] Retrying on port 465 fallback...`);
+      const fallbackClient = getFallbackTransporter();
+      info = await fallbackClient.sendMail({
+        from: fromEmail,
+        to: safeRecipient,
+        subject,
+        text: plainText,
+        html
+      });
+    }
 
     console.log(`[Email Delivered] '${templateType}' sent to ${safeRecipient}. MessageId: ${info.messageId}`);
 
