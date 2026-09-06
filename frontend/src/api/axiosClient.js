@@ -4,7 +4,8 @@ const axiosClient = axios.create({
   baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 15000 // 15 seconds — prevents infinite loading on cold starts or slow network
 });
 
 // Request interceptor to attach JWT token
@@ -32,10 +33,12 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected network error occurred.';
+    const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+    const message = isTimeout
+      ? 'The server is taking too long to respond. Please try again in a moment.'
+      : (error.response?.data?.message ||
+         error.message ||
+         'An unexpected network error occurred.');
 
     return Promise.reject({
       message,
