@@ -1,3 +1,7 @@
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 const nodemailer = require('nodemailer');
 const EmailLog = require('../models/EmailLog');
 
@@ -16,6 +20,7 @@ const getTransporter = () => {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT, 10) || 465,
         secure: true,
+        family: 4, // Force IPv4 to prevent ENETUNREACH on cloud platforms (Render, AWS)
         auth: { user, pass },
         connectionTimeout: 8000,
         greetingTimeout: 5000,
