@@ -17,6 +17,21 @@ const isRequesterApprovedB2B = (user) => {
   );
 };
 
+const sanitizeProductForRole = (product, canSeeWholesale) => {
+  if (!product) return null;
+  if (typeof product.toRoleSpecificJSON === 'function') {
+    return product.toRoleSpecificJSON(canSeeWholesale);
+  }
+  const obj = product.toObject ? product.toObject() : { ...product };
+  if (!canSeeWholesale) {
+    delete obj.wholesalePrice;
+    delete obj.b2bPrice;
+    delete obj.b2bMoq;
+    delete obj.moq;
+  }
+  return obj;
+};
+
 /**
  * Flavour keyword matcher for Makhana flavours
  */
@@ -160,7 +175,7 @@ const getAllProducts = async (req, res, next) => {
     // 8. Strict B2B Wholesale Security:
     // Only return wholesale pricing and MOQ if requester is an approved B2B partner or admin.
     const canSeeWholesale = isRequesterApprovedB2B(req.user);
-    const sanitizedProducts = products.map((p) => p.toRoleSpecificJSON(canSeeWholesale));
+    const sanitizedProducts = products.map((p) => sanitizeProductForRole(p, canSeeWholesale));
 
     return sendSuccess(res, 'Products fetched successfully.', {
       products: sanitizedProducts,
@@ -203,7 +218,7 @@ const getProductById = async (req, res, next) => {
     const canSeeWholesale = isRequesterApprovedB2B(req.user);
 
     return sendSuccess(res, 'Product fetched successfully.', {
-      product: product.toRoleSpecificJSON(canSeeWholesale),
+      product: sanitizeProductForRole(product, canSeeWholesale),
       isWholesaleView: canSeeWholesale
     });
   } catch (error) {
@@ -227,7 +242,7 @@ const getFeaturedProducts = async (req, res, next) => {
       .sort({ 'ratings.average': -1 });
 
     const canSeeWholesale = isRequesterApprovedB2B(req.user);
-    const sanitizedProducts = products.map((p) => p.toRoleSpecificJSON(canSeeWholesale));
+    const sanitizedProducts = products.map((p) => sanitizeProductForRole(p, canSeeWholesale));
 
     return sendSuccess(res, 'Featured products retrieved.', {
       products: sanitizedProducts,
