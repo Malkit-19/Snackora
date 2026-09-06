@@ -5,6 +5,20 @@ if (dns.setDefaultResultOrder) {
 const nodemailer = require('nodemailer');
 const EmailLog = require('../models/EmailLog');
 
+// Strict IPv4 DNS lookup to prevent cloud container IPv6 network unreachable errors
+const ipv4Lookup = (hostname, options, callback) => {
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  dns.resolve4(hostname, (err, addresses) => {
+    if (err || !addresses || addresses.length === 0) {
+      return dns.lookup(hostname, { family: 4 }, callback);
+    }
+    callback(null, addresses[0], 4);
+  });
+};
+
 let transporter = null;
 
 /**
@@ -20,11 +34,11 @@ const getTransporter = () => {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT, 10) || 465,
         secure: true,
-        family: 4, // Force IPv4 to prevent ENETUNREACH on cloud platforms (Render, AWS)
+        lookup: ipv4Lookup,
         auth: { user, pass },
-        connectionTimeout: 8000,
-        greetingTimeout: 5000,
-        socketTimeout: 10000
+        connectionTimeout: 10000,
+        greetingTimeout: 8000,
+        socketTimeout: 15000
       });
     } else {
       // Simulation mode when real SMTP credentials are not configured in environment
