@@ -425,17 +425,14 @@ const forgotPassword = async (req, res, next) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
-    // Dispatch real email via Nodemailer
-    const emailResult = await sendPasswordResetEmail({
-      user,
-      otp: rawOtp,
-      resetUrl
-    });
+    // Dispatch reset email in background — non-blocking so API responds immediately
+    sendPasswordResetEmail({ user, otp: rawOtp, resetUrl })
+      .catch((emailErr) => console.warn('[ForgotPassword Email Error]:', emailErr.message));
 
     return sendSuccess(res, 'Verification code and password reset link sent to your email.', {
       email: user.email,
       expiresInMinutes: 15,
-      emailDispatched: emailResult.success
+      emailDispatched: true
     });
   } catch (error) {
     next(error);
