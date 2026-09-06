@@ -63,19 +63,21 @@ app.use(helmet({
 // 2. Cross-Origin Resource Sharing (CORS)
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, curl, server-to-server)
+    // Allow requests with no origin (mobile apps, Postman, curl, server-to-server, same-origin)
     if (!origin) return callback(null, true);
 
-    // Allow localhost, 127.0.0.1, and all local/private network LAN IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-    const isLocalOrLAN = /^http(s)?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
-    if (isLocalOrLAN || config.env === 'development' || config.cors.allowedOrigins.includes(origin) || config.cors.allowedOrigins.includes('*')) {
+    // Allow localhost, 127.0.0.1, LAN, and all onrender.com subdomains, or configured origins
+    const isAllowedDomain =
+      /^http(s)?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin) ||
+      /\.onrender\.com$/.test(origin) ||
+      /\.vercel\.app$/.test(origin) ||
+      /snackora\.in$/.test(origin);
+
+    if (isAllowedDomain || config.env === 'development' || config.cors.allowedOrigins.includes(origin) || config.cors.allowedOrigins.includes('*')) {
       return callback(null, true);
     }
 
-    if (config.cors.allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS policy: Access from this origin is not allowed.'));
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
