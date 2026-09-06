@@ -8,6 +8,17 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('snackora_token') || null);
   const [loading, setLoading] = useState(true);
 
+  const logout = useCallback(() => {
+    try {
+      authApi.logout().catch(() => {});
+    } finally {
+      localStorage.removeItem('snackora_token');
+      localStorage.removeItem('snackora_user');
+      setToken(null);
+      setUser(null);
+    }
+  }, []);
+
   // Sync / verify current session on startup
   const refreshUser = useCallback(async () => {
     const savedToken = localStorage.getItem('snackora_token');
@@ -31,7 +42,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
     refreshUser();
@@ -73,16 +84,6 @@ export const AuthProvider = ({ children }) => {
     throw new Error(res.message || 'B2B registration failed');
   };
 
-  const logout = () => {
-    try {
-      authApi.logout().catch(() => {});
-    } finally {
-      localStorage.removeItem('snackora_token');
-      localStorage.removeItem('snackora_user');
-      setToken(null);
-      setUser(null);
-    }
-  };
 
   // Helper flags
   const role = user?.role || 'GUEST';
