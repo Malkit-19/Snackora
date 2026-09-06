@@ -425,14 +425,35 @@ const forgotPassword = async (req, res, next) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
-    // Dispatch reset email in background — non-blocking so API responds immediately
+    // 1. Dispatch reset email in background (non-blocking)
     sendPasswordResetEmail({ user, otp: rawOtp, resetUrl })
       .catch((emailErr) => console.warn('[ForgotPassword Email Error]:', emailErr.message));
 
-    return sendSuccess(res, 'Verification code and password reset link sent to your email.', {
+    // 2. Dispatch real-time WhatsApp OTP & reset link if user has phone (over HTTPS port 443)
+    if (user.phone && user.whatsappOptIn !== false) {
+      whatsappService.sendMessage({
+        to: user.phone,
+        message: `🔐 *Snackora Password Reset* 🔐
+
+Hi ${user.name || 'Customer'},
+We received a request to reset the password for your Snackora account.
+
+🔑 *Your 6-Digit OTP Code:* *${rawOtp}*
+⏱️ Valid for 15 minutes.
+
+👉 *1-Click Reset Link:*
+${resetUrl}
+
+If you didn't request this, you can safely ignore this message.
+_Team Snackora Support_`
+      }).catch((waErr) => console.warn('[WhatsApp Reset Warning]:', waErr.message));
+    }
+
+    return sendSuccess(res, 'Verification code and password reset link sent to your email & WhatsApp.', {
       email: user.email,
       expiresInMinutes: 15,
-      emailDispatched: true
+      emailDispatched: true,
+      hasPhone: !!user.phone
     });
   } catch (error) {
     next(error);

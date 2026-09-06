@@ -3,6 +3,7 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const EmailLog = require('../models/EmailLog');
 
 // Strict IPv4 DNS lookup to prevent cloud container IPv6 network unreachable errors
@@ -33,9 +34,9 @@ const createTransporter = (port = 587, secure = false) => {
       tls: {
         rejectUnauthorized: false
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000
+      connectionTimeout: 8000,
+      greetingTimeout: 6000,
+      socketTimeout: 10000
     });
   }
 
@@ -93,25 +94,54 @@ const sendEmail = async ({
                                  .trim();
 
     let info;
-    try {
-      const mailClient = getTransporter();
-      info = await mailClient.sendMail({
-        from: fromEmail,
-        to: safeRecipient,
+
+    // 1. Check for HTTPS Email APIs first (never blocked by cloud port filters)
+    if (process.env.RESEND_API_KEY) {
+      const resendRes = await axios.post('https://api.resend.com/emails', {
+        from: process.env.EMAIL_FROM || 'Snackora <onboarding@resend.dev>',
+        to: [safeRecipient],
         subject,
-        text: plainText,
-        html
+        html,
+        text: plainText
+      }, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        timeout: 8000
       });
-    } catch (primaryErr) {
-      console.warn(`[Email Primary 587 Failed: ${primaryErr.message}] Retrying on port 465 fallback...`);
-      const fallbackClient = getFallbackTransporter();
-      info = await fallbackClient.sendMail({
-        from: fromEmail,
-        to: safeRecipient,
+      info = { messageId: resendRes.data?.id || `resend_${Date.now()}` };
+    } else if (process.env.BREVO_API_KEY) {
+      const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
+        sender: { name: 'Snackora', email: process.env.SMTP_USER || 'snackora26@gmail.com' },
+        to: [{ email: safeRecipient }],
         subject,
-        text: plainText,
-        html
+        htmlContent: html,
+        textContent: plainText
+      }, {
+        headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+        timeout: 8000
       });
+      info = { messageId: brevoRes.data?.messageId || `brevo_${Date.now()}` };
+    } else {
+      // 2. Nodemailer SMTP with auto-fallback
+      try {
+        const mailClient = getTransporter();
+        info = await mailClient.sendMail({
+          from: fromEmail,
+          to: safeRecipient,
+          subject,
+          text: plainText,
+          html
+        });
+      } catch (primaryErr) {
+        console.warn(`[Email Primary 587 Failed: ${primaryErr.message}] Retrying on port 465 fallback...`);
+        const fallbackClient = getFallbackTransporter();
+        info = await fallbackClient.sendMail({
+          from: fromEmail,
+          to: safeRecipient,
+          subject,
+          text: plainText,
+          html
+        });
+      }
     }
 
     console.log(`[Email Delivered] '${templateType}' sent to ${safeRecipient}. MessageId: ${info.messageId}`);
