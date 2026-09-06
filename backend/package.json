@@ -1,0 +1,41 @@
+{
+  "name": "snackora-backend",
+  "version": "1.0.0",
+  "description": "Snackora E-Commerce Production REST API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed": "node scripts/seed.js"
+  },
+  "keywords": [
+    "snackora",
+    "ecommerce",
+    "b2b",
+    "retail",
+    "express",
+    "mongodb"
+  ],
+  "author": "Snackora Engineering",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.1",
+    "morgan": "^1.10.0",
+    "multer": "^2.3.0",
+    "nodemailer": "^9.1.1",
+    "razorpay": "^2.9.8",
+    "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

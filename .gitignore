@@ -1,0 +1,82 @@
+# ── Operating System ───────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Node.js ────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.yarn-integrity
+
+# ── Environment / Secrets (CRITICAL: Never commit) ────────────────────────────
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+.env*.local
+
+# ── Build Outputs ──────────────────────────────────────────────────────────────
+dist/
+build/
+.next/
+.nuxt/
+.vuepress/dist
+out/
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+pids/
+*.pid
+*.seed
+*.pid.lock
+lib-cov/
+
+# ── Test / Coverage ────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+.jest-cache/
+
+# ── IDEs and Editors ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Temporary / Cache ──────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# ── Runtime / Upload Directories ──────────────────────────────────────────────
+backend/uploads/
+backend/tmp/
+uploads/
+tmp/
+
+# ── Package Locks (decide one, commit only that) ───────────────────────────────
+# Uncomment if you don't use yarn:
+# yarn.lock
+# Uncomment if you don't use pnpm:
+# pnpm-lock.yaml
