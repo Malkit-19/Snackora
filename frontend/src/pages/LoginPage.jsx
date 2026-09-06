@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,11 +14,23 @@ export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectPath = location.state?.from?.pathname || '/';
+
+  // Support ?redirect=/shop from WhatsApp / email links
+  const searchParams = new URLSearchParams(location.search);
+  const redirectParam = searchParams.get('redirect');
+  const redirectPath = redirectParam || location.state?.from?.pathname || '/shop';
+
+  // If user is already logged in, redirect them away from login page
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'ADMIN') navigate('/admin', { replace: true });
+      else navigate(redirectPath, { replace: true });
+    }
+  }, [user, navigate, redirectPath]);
 
   const set = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -43,8 +55,8 @@ export const LoginPage = () => {
     try {
       const data = await login(form.email.trim(), form.password);
       success(`Welcome back, ${data.user.name}!`);
-      if (data.user.role === 'ADMIN') navigate('/admin');
-      else navigate(redirectPath);
+      if (data.user.role === 'ADMIN') navigate('/admin', { replace: true });
+      else navigate(redirectPath, { replace: true });
     } catch (err) {
       toastError(err.message || 'Invalid credentials. Please try again.');
       setErrors({ general: err.message || 'Invalid credentials.' });

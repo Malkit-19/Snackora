@@ -182,7 +182,7 @@ To celebrate YOU, we've loaded a special Birthday Treat into your pantry:
 🎁 *Your Birthday Gift:* ${discountText}
 🎟️ *Promo Code:* *${couponCode}*
 
-👉 Claim your birthday cookies now: https://www.snackora.in/shop?category=cookies
+👉 Claim your birthday cookies now: ${process.env.FRONTEND_URL || 'https://snackora-7k6f.onrender.com'}/login?redirect=/shop?category=cookies
 
 Enjoy the delicious crunch! Have an incredible year ahead! 🎈
 _Team Snackora Gourmet Pantry_`;
@@ -342,8 +342,10 @@ _Snackora Support Team_`;
   async sendPromotionalBroadcast({ to, userName = 'Food Lover', title, description = '', link = '/shop', couponCode = '', mediaUrl = null }) {
     if (!to) return { success: false, reason: 'NO_PHONE_NUMBER' };
 
-    const base = (process.env.CLIENT_URL || 'https://www.snackora.in').replace(/\/$/, '');
-    const cleanLink = link.startsWith('http') ? link : `${base}${link.startsWith('/') ? link : '/' + link}`;
+    const base = (process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://snackora-7k6f.onrender.com').replace(/\/$/, '');
+    // Build destination path, then wrap in /login?redirect= so non-logged-in users sign in first
+    const destPath = link.startsWith('http') ? link : `${link.startsWith('/') ? link : '/' + link}`;
+    const cleanLink = link.startsWith('http') ? link : `${base}/login?redirect=${encodeURIComponent(destPath)}`;
     const couponLine = couponCode ? `\n🎟️ *Use Promo Code:* *${couponCode}*` : '';
     const descLine = description ? `\n${description}\n` : '';
 
@@ -376,9 +378,12 @@ _Team Snackora Gourmet Pantry_`;
   async sendWelcomeBroadcast({ to, userName = 'Food Lover', isB2B = false, couponCode = 'WELCOME10', activeAd = null }) {
     if (!to) return { success: false, reason: 'NO_PHONE_NUMBER' };
 
+    const base = (process.env.FRONTEND_URL || 'https://snackora-7k6f.onrender.com').replace(/\/$/, '');
+
     let promoSection = `🎟️ *Your Welcome Gift:* Use code *${couponCode}* for *10% OFF* your first gourmet snack order!`;
     if (activeAd && activeAd.title) {
-      promoSection += `\n\n🔥 *Trending Spotlight:* ${activeAd.title}\n👉 Check it out: https://www.snackora.in${activeAd.link || '/shop'}`;
+      const adDest = activeAd.link || '/shop';
+      promoSection += `\n\n🔥 *Trending Spotlight:* ${activeAd.title}\n👉 Check it out: ${base}/login?redirect=${encodeURIComponent(adDest)}`;
     }
 
     const message = isB2B
@@ -400,7 +405,7 @@ Thank you for joining Snackora — your destination for handcrafted, guilt-free 
 
 ${promoSection}
 
-👉 *Start Exploring Flavors:* https://www.snackora.in/shop
+👉 *Start Exploring Flavors:* ${base}/login?redirect=%2Fshop
 
 🚚 *Why you'll love snacking with us:*
 • 100% Roasted Makhana & Artisan Cookies
