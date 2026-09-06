@@ -13,8 +13,13 @@ const getTransporter = () => {
 
     if (user && pass && !user.includes('REPLACE_WITH')) {
       transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass }
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT, 10) || 465,
+        secure: true,
+        auth: { user, pass },
+        connectionTimeout: 8000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000
       });
     } else {
       // Simulation mode when real SMTP credentials are not configured in environment
