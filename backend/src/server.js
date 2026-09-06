@@ -46,6 +46,9 @@ const { initBirthdayScheduler } = require('./jobs/birthdayScheduler');
 // Initialize Express App
 const app = express();
 
+// Enable trust proxy for cloud deployment (Render, Heroku, AWS ELB)
+app.set('trust proxy', 1);
+
 // Connect to Database
 connectDB();
 
@@ -73,10 +76,6 @@ app.use(cors({
       /\.vercel\.app$/.test(origin) ||
       /snackora\.in$/.test(origin);
 
-    if (isAllowedDomain || config.env === 'development' || config.cors.allowedOrigins.includes(origin) || config.cors.allowedOrigins.includes('*')) {
-      return callback(null, true);
-    }
-
     return callback(null, true);
   },
   credentials: true,
@@ -86,10 +85,10 @@ app.use(cors({
 
 
 // 3. Tiered Rate Limiters
-// 3a. Auth limiter: 15 (prod) / 500 (dev) requests per 15 min
+// 3a. Auth limiter: 60 (prod) / 500 (dev) requests per 15 min
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: config.env === 'production' ? 15 : 500,
+  max: config.env === 'production' ? 60 : 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
